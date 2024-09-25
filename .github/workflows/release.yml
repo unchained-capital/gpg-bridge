@@ -7,66 +7,86 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v1
-      with:
-        bun-version: latest
+      - uses: actions/checkout@v3
 
-    - name: Install dependencies
-      run: bun install
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
 
-    - name: Compile for all platforms
-      run: bun run compile:all
+      - name: Install dependencies
+        run: bun install
 
-    - name: Upload Windows Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./dist/bridge-executable-win.exe
-        asset_name: bridge-executable-win.exe
-        asset_content_type: application/octet-stream
+      - name: Install zip
+        run: sudo apt-get install zip
 
-    - name: Upload macOS Intel Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./dist/bridge-executable-mac-intel
-        asset_name: bridge-executable-mac-intel
-        asset_content_type: application/octet-stream
+      - name: Compile for all platforms
+        run: bun run compile:all
 
-    - name: Upload macOS ARM Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./dist/bridge-executable-mac-arm
-        asset_name: bridge-executable-mac-arm
-        asset_content_type: application/octet-stream
+      - name: Zip Windows Asset
+        run: zip -j gpg-bridge-win.zip ./dist/gpg-bridge-win.exe
 
-    - name: Upload Linux x64 Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./dist/bridge-executable-linux
-        asset_name: bridge-executable-linux
-        asset_content_type: application/octet-stream
+      - name: Upload Windows Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./gpg-bridge-win.zip
+          asset_name: gpg-bridge-win.zip
+          asset_content_type: application/zip
 
-    - name: Upload Linux ARM Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./dist/bridge-executable-linux-arm
-        asset_name: bridge-executable-linux-arm
-        asset_content_type: application/octet-stream
+      - name: Zip macOS Intel Asset
+        run: zip -j gpg-bridge-mac-intel.zip ./dist/gpg-bridge-mac-intel
+
+      - name: Upload macOS Intel Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./gpg-bridge-mac-intel.zip
+          asset_name: gpg-bridge-mac-intel.zip
+          asset_content_type: application/zip
+
+      - name: Zip macOS ARM Asset
+        run: zip -j gpg-bridge-mac-arm.zip ./dist/gpg-bridge-mac-arm
+
+      - name: Upload macOS ARM Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./gpg-bridge-mac-arm.zip
+          asset_name: gpg-bridge-mac-arm.zip
+          asset_content_type: application/zip
+
+      - name: Zip Linux x64 Asset
+        run: zip -j gpg-bridge-linux-x64.zip ./dist/gpg-bridge-linux-x64
+
+      - name: Upload Linux x64 Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./gpg-bridge-linux-x64.zip
+          asset_name: gpg-bridge-linux-x64.zip
+          asset_content_type: application/zip
+
+      - name: Zip Linux ARM Asset
+        run: zip -j gpg-bridge-linux-arm.zip ./dist/gpg-bridge-linux-arm
+
+      - name: Upload Linux ARM Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./gpg-bridge-linux-arm.zip
+          asset_name: gpg-bridge-linux-arm.zip
+          asset_content_type: application/zip
