@@ -1,0 +1,32 @@
+{
+  "name": "gpg-bridge",
+  "version": "1.0.0",
+  "description": "A WebSocket server executing GPG commands via the GPG CLI based on incoming requests.",
+  "type": "module",
+  "main": "index.ts",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --watch --verbose index.ts",
+    "compile:win": "bun build index.ts --compile --target=bun-windows-x64 --outfile ./dist/bridge-executable-win.exe",
+    "compile:mac-intel": "bun build index.ts --compile --target=bun-darwin-x64 --outfile ./dist/bridge-executable-mac-intel",
+    "compile:mac-arm": "bun build index.ts --compile --target=bun-darwin-arm64 --outfile ./dist/bridge-executable-mac-arm",
+    "compile:linux": "bun build index.ts --compile --target=bun-linux-x64 --outfile ./dist/bridge-executable-linux",
+    "compile:linux-arm": "bun build index.ts --compile --target=bun-linux-arm64 --outfile ./dist/bridge-executable-linux-arm",
+    "compile:all": "bun run compile:win && bun run compile:mac-intel && bun run compile:mac-arm && bun run compile:linux && bun run compile:linux-arm",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bun": "^1.1.17",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "kill-port": "^2.0.1",
+    "openpgp": "^5.11.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "bun-types": "^1.1.3"
+  }
+}
