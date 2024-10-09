@@ -14,7 +14,7 @@ bun install
 
 - Run the server `bun dev`
 
-Now you can curl it
+Now you can access it from the command line using [websocat](https://github.com/vi/websocat).
 
 ```bash
 echo '{"command": "sign", "message": "SGVsbG8sIHdvcmxkIQ==", "fingerprint": "YOUR_GPG_KEY_FINGERPRINT"}' | websocat ws://localhost:5151
@@ -29,5 +29,5 @@ This will create a single executable in the `dist` folder for the specific platf
 ## TODO
 
 - Should show itself in the system tray.
-- installable without hassble.
+- installable without hassle.
 - configure what key you're signing with.
