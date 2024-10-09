@@ -172,7 +172,7 @@ export async function getGpgKeys() {
   }
 
   for (let key of keys) {
-    const armoredKey = await $`gpg --export --armor ${key.fingerprint}`;
+    const armoredKey = await $`gpg --export --armor --export-options export-minimal ${key.fingerprint}!`;
     key.pubkey = armoredKey.text();
   }
 
