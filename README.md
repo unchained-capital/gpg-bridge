@@ -1,8 +1,22 @@
 # GPG-BRIDGE
 
-A WebSocket server executing GPG commands via the GPG CLI based on incoming requests.
+At the moment, the FIDO standard does not include a way to access public
+key signing services from a FIDO device from a web page. This project
+represents the need for a short term workaround until such functionality
+is available.
 
-# How to run
+As such this project implements a WebSocket server that can run locally on
+a users machine which will  execute GPG commands via the GPG CLI based on
+incoming requests.  Separately, GPG can be configured to work with a device
+that implements a smart card interface to allow the actual cryptographic
+signing to take place on trusted hardware.
+
+## Warning
+
+This project is very much a work in progress. It is certainly not
+ready for general use.
+
+## How to run
 
 - Install dependencies: `bun i`
 - If you have a custom npm registry configured, you might need to do
