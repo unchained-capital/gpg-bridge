@@ -2,7 +2,12 @@
 
 A WebSocket server executing GPG commands via the GPG CLI based on incoming requests.
 
-# How to run
+## Warning
+
+This project is very much a work in progress. It is certainly not
+ready for general use.
+
+## How to run
 
 - Install dependencies: `bun i`
 - If you have a custom npm registry configured, you might need to do
