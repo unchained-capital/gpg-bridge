@@ -6,7 +6,7 @@ represents the need for a short term workaround until such functionality
 is available.
 
 As such this project implements a WebSocket server that can run locally on
-as users machine which will  execute GPG commands via the GPG CLI based on
+a users machine which will  execute GPG commands via the GPG CLI based on
 incoming requests.  Separately, GPG can be configured to work with a device
 that implements a smart card interface to allow the actual cryptographic
 signing to take place on trusted hardware.
