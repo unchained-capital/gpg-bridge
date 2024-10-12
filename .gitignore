@@ -2,3 +2,4 @@ node_modules
 bunfig_bak.toml
 dist
 .*.bun-build
+go/bin/gpg-bridge*

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# This is a quick and dirty script to cross compile to a bunch of
+# os/archectcute combos
+for arch in linux-amd64 darwin-amd64 darwin-arm64 windows-arm64; do
+  GOOS=${arch%%-*}
+  GOARCH=${arch##*-}
+  if [ $GOOS == "windows" ]; then
+    SUFFIX=".exe"
+  else
+    SUFFIX=""
+  fi
+  go build -o bin/gpg-bridge-$GOOS-$GOARCH$SUFFIX
+done
