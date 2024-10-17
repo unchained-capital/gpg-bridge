@@ -6,11 +6,9 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v3
 
@@ -22,27 +20,62 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Electron app
-        run: npm run package-${{ matrix.os }}
+      - name: Install electron-packager globally
+        run: npm install -g electron-packager
 
-      - name: Zip assets
-        run: |
-          if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            zip -r GPG-Bridge-mac.zip GPG-Bridge-darwin-*
-          elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-            zip -r GPG-Bridge-linux.zip GPG-Bridge-linux-*
-          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-            powershell Compress-Archive -Path GPG-Bridge-win32-* -DestinationPath GPG-Bridge-win.zip
-          fi
+      - name: Build for all platforms
+        run: npm run package-all
 
-      - name: Upload Release Asset
+      - name: Zip Windows Asset
+        run: zip -r GPG-Bridge-win.zip GPG-Bridge-win32-x64
+
+      - name: Upload Windows Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./GPG-Bridge-${{ matrix.os == 'macos-latest' && 'mac' || matrix.os == 'ubuntu-latest' && 'linux' || 'win' }}.zip
-          asset_name: GPG-Bridge-${{ matrix.os == 'macos-latest' && 'mac' || matrix.os == 'ubuntu-latest' && 'linux' || 'win' }}.zip
+          asset_path: ./GPG-Bridge-win.zip
+          asset_name: GPG-Bridge-win.zip
+          asset_content_type: application/zip
+
+      - name: Zip macOS Asset
+        run: zip -r GPG-Bridge-mac.zip GPG-Bridge-darwin-x64 GPG-Bridge-darwin-arm64
+
+      - name: Upload macOS Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./GPG-Bridge-mac.zip
+          asset_name: GPG-Bridge-mac.zip
+          asset_content_type: application/zip
+
+      - name: Zip Linux Asset
+        run: zip -r GPG-Bridge-linux.zip GPG-Bridge-linux-x64
+
+      - name: Upload Linux Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./GPG-Bridge-linux.zip
+          asset_name: GPG-Bridge-linux.zip
+          asset_content_type: application/zip
+
+      - name: Zip Windows Asset
+        run: zip -j gpg-bridge-win.zip ./dist/gpg-bridge-win.exe
+
+      - name: Upload Windows Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./gpg-bridge-win.zip
+          asset_name: gpg-bridge-win.zip
           asset_content_type: application/zip
 
       - name: Zip macOS Intel Asset
