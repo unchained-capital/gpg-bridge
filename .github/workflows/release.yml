@@ -17,14 +17,14 @@ jobs:
         os:
           - macos-latest
           # - ubuntu-latest
-          - windows-latest
+          # - windows-latest
         include:
           - os: macos-latest
             make_command: make:mac
           # - os: ubuntu-latest
           #   make_command: make:linux
-          - os: windows-latest
-            make_command: make:win
+          # - os: windows-latest
+          #   make_command: make:win
 
     steps:
       - name: Check out Git repository
@@ -37,7 +37,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm install -g electron-forge
+          npm install -g @electron-forge/cli
           npm ci
 
       - name: Make Electron app
