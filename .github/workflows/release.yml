@@ -21,14 +21,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install electron-packager globally
-        run: npm install -g electron-packager
+      - name: List installed packages
+        run: npm list --depth=0
 
       - name: Build for all platforms
         run: npm run package-all
 
       - name: Zip Windows Asset
-        run: zip -r GPG-Bridge-win.zip GPG-Bridge-win32-x64
+        run: zip -r GPG-Bridge-win.zip dist/GPG-Bridge-win32-x64
 
       - name: Upload Windows Asset
         uses: actions/upload-release-asset@v1
@@ -41,7 +41,7 @@ jobs:
           asset_content_type: application/zip
 
       - name: Zip macOS Asset
-        run: zip -r GPG-Bridge-mac.zip GPG-Bridge-darwin-x64 GPG-Bridge-darwin-arm64
+        run: zip -r GPG-Bridge-mac.zip dist/GPG-Bridge-darwin-x64 dist/GPG-Bridge-darwin-arm64
 
       - name: Upload macOS Asset
         uses: actions/upload-release-asset@v1
@@ -54,7 +54,7 @@ jobs:
           asset_content_type: application/zip
 
       - name: Zip Linux Asset
-        run: zip -r GPG-Bridge-linux.zip GPG-Bridge-linux-x64
+        run: zip -r GPG-Bridge-linux.zip dist/GPG-Bridge-linux-x64
 
       - name: Upload Linux Asset
         uses: actions/upload-release-asset@v1
