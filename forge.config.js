@@ -32,6 +32,16 @@ module.exports = {
       name: "@electron-forge/maker-dmg",
       config: {
         icon: "./icons/mac/icon.icns",
+        format: "ULFO",
+        name: "GPGBridge",
+        overwrite: true,
+        debug: true,
+        additionalDMGOptions: {
+          "code-sign": {
+            "signing-identity":
+              "Developer ID Application: Your Name (XXXXXXXXXX)",
+          },
+        },
       },
     },
   ],
