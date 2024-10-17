@@ -6,37 +6,43 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
-          bun-version: latest
+          node-version: "20"
 
       - name: Install dependencies
-        run: bun install
+        run: npm ci
 
-      - name: Install zip
-        run: sudo apt-get install zip
+      - name: Build Electron app
+        run: npm run package-${{ matrix.os }}
 
-      - name: Compile for all platforms
-        run: bun run compile:all
+      - name: Zip assets
+        run: |
+          if [ "${{ matrix.os }}" == "macos-latest" ]; then
+            zip -r GPG-Bridge-mac.zip GPG-Bridge-darwin-*
+          elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+            zip -r GPG-Bridge-linux.zip GPG-Bridge-linux-*
+          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
+            powershell Compress-Archive -Path GPG-Bridge-win32-* -DestinationPath GPG-Bridge-win.zip
+          fi
 
-      - name: Zip Windows Asset
-        run: zip -j gpg-bridge-win.zip ./dist/gpg-bridge-win.exe
-
-      - name: Upload Windows Asset
+      - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./gpg-bridge-win.zip
-          asset_name: gpg-bridge-win.zip
+          asset_path: ./GPG-Bridge-${{ matrix.os == 'macos-latest' && 'mac' || matrix.os == 'ubuntu-latest' && 'linux' || 'win' }}.zip
+          asset_name: GPG-Bridge-${{ matrix.os == 'macos-latest' && 'mac' || matrix.os == 'ubuntu-latest' && 'linux' || 'win' }}.zip
           asset_content_type: application/zip
 
       - name: Zip macOS Intel Asset
