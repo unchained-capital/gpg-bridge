@@ -7,6 +7,10 @@ const { spawn } = require("child_process");
 const fs = require("fs").promises;
 const kill = require("kill-port");
 
+if (require("electron-squirrel-startup")) {
+  app.quit();
+}
+
 let mainWindow;
 let wss;
 let tray = null;
