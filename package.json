@@ -10,12 +10,10 @@
     "package-win": "electron-packager . GPG-Bridge --out=dist --platform=win32 --arch=x64 --icon=icons/win/icon.ico --overwrite",
     "package-all": "npm run package-mac && npm run package-linux && npm run package-win"
   },
-  "devDependencies": {
-    "@electron/packager": "^18.3.5",
-    "electron": "^33.0.1"
-  },
   "dependencies": {
     "kill-port": "^2.0.1",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "@electron/packager": "^18.3.5",
+    "electron": "^33.0.1"
   }
 }
