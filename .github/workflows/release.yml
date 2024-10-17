@@ -7,7 +7,22 @@ on:
 
 jobs:
   release:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+        include:
+          - os: macos-latest
+            build: build:mac
+            deploy: deploy:mac
+          - os: windows-latest
+            build: build:win
+            deploy: deploy:win
+          - os: ubuntu-latest
+            build: build:linux
+            deploy: deploy:linux
+
+    runs-on: ${{ matrix.os }}
+
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v3
@@ -20,15 +35,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build/release Electron app
+      - name: Build Electron app
+        run: npm run ${{ matrix.build }}
+
+      - name: Deploy Electron app
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          npm run build
-          npm run deploy
+        run: npm run ${{ matrix.deploy }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: dist
+          name: dist-${{ matrix.os }}
           path: dist

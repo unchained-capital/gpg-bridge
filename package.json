@@ -5,8 +5,12 @@
   "main": "main.js",
   "scripts": {
     "dev": "electron .",
-    "build": "electron-builder build --mac --windows --linux --publish never",
-    "deploy": "electron-builder build --mac --windows --linux --publish always"
+    "build:mac": "electron-builder build --mac --publish never",
+    "build:win": "electron-builder build --windows --publish never",
+    "build:linux": "electron-builder build --linux --publish never",
+    "deploy:mac": "electron-builder build --mac --publish always",
+    "deploy:win": "electron-builder build --windows --publish always",
+    "deploy:linux": "electron-builder build --linux --publish always"
   },
   "dependencies": {
     "kill-port": "^2.0.1",
