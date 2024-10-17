@@ -1,4 +1,4 @@
-name: Release
+name: Build and Release
 
 on:
   push:
@@ -6,59 +6,29 @@ on:
       - main
 
 jobs:
-  build:
+  release:
     runs-on: macos-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v3
+      - name: Check out Git repository
+        uses: actions/checkout@v3
 
-      - name: Setup Node.js
+      - name: Install Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "20"
+          node-version: 20
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build for all platforms
-        run: npm run package-all
-
-      - name: Zip Windows Asset
-        run: zip -r GPG-Bridge-win.zip dist/GPG-Bridge-win32-x64
-
-      - name: Upload Windows Asset
-        uses: actions/upload-release-asset@v1
+      - name: Build/release Electron app
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm run build
+          npm run deploy
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./GPG-Bridge-win.zip
-          asset_name: GPG-Bridge-win.zip
-          asset_content_type: application/zip
-
-      - name: Zip macOS Asset
-        run: zip -r GPG-Bridge-mac.zip dist/GPG-Bridge-darwin-x64 dist/GPG-Bridge-darwin-arm64
-
-      - name: Upload macOS Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./GPG-Bridge-mac.zip
-          asset_name: GPG-Bridge-mac.zip
-          asset_content_type: application/zip
-
-      - name: Zip Linux Asset
-        run: zip -r GPG-Bridge-linux.zip dist/GPG-Bridge-linux-x64
-
-      - name: Upload Linux Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./GPG-Bridge-linux.zip
-          asset_name: GPG-Bridge-linux.zip
-          asset_content_type: application/zip
+          name: dist
+          path: dist

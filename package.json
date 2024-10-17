@@ -5,17 +5,48 @@
   "main": "main.js",
   "scripts": {
     "dev": "electron .",
-    "package-mac": "npx --yes electron-packager . GPG-Bridge --out=dist --platform=darwin --arch=x64,arm64 --icon=icons/mac/icon.icns --overwrite",
-    "package-linux": "npx --yes electron-packager . GPG-Bridge --out=dist --platform=linux --arch=x64 --icon=icons/png/128x128.png --overwrite",
-    "package-win": "npx --yes electron-packager . GPG-Bridge --out=dist --platform=win32 --arch=x64 --icon=icons/win/icon.ico --overwrite",
-    "package-all": "npm run package-mac && npm run package-linux && npm run package-win"
+    "build": "electron-builder build --mac --windows --linux --publish never",
+    "deploy": "electron-builder build --mac --windows --linux --publish always"
   },
   "dependencies": {
     "kill-port": "^2.0.1",
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@electron/packager": "^18.3.5",
-    "electron": "^33.0.1"
+    "electron": "^33.0.1",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.unchained.gpgbridge",
+    "productName": "GPG Bridge",
+    "mac": {
+      "category": "public.app-category.utilities",
+      "icon": "icons/mac/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "icon": "icons/win/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "linux": {
+      "icon": "icons/png",
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm",
+        "snap",
+        "tar.gz"
+      ]
+    },
+    "publish": {
+      "provider": "github",
+      "releaseType": "release"
+    }
   }
 }
