@@ -11,12 +11,15 @@ jobs:
 
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os:
+          - macos-latest
+          # - ubuntu-latest
+          - windows-latest
         include:
           - os: macos-latest
             make_command: make:mac
-          - os: ubuntu-latest
-            make_command: make:linux
+          # - os: ubuntu-latest
+          #   make_command: make:linux
           - os: windows-latest
             make_command: make:win
 
@@ -36,6 +39,17 @@ jobs:
 
       - name: Make Electron app
         run: npm run ${{ matrix.make_command }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.os }}-build
+          path: |
+            out/make/**/*.exe
+            out/make/**/*.msi
+            out/make/**/*.dmg
+            out/make/**/*.zip
+          if-no-files-found: error
 
       - name: Publish Electron app
         env:

@@ -8,12 +8,12 @@ module.exports = {
   rebuildConfig: {},
   makers: [
     {
-      name: "@electron-forge/maker-squirrel",
+      name: "@electron-forge/maker-wix",
       config: {
         name: "GPGBridge",
-        authors: "Unchained",
+        manufacturer: "Unchained",
         exe: "GPGBridge.exe",
-        setupIcon: "./icons/win/icon.ico",
+        icon: "./icons/win/icon.ico",
       },
     },
     {
