@@ -61,4 +61,16 @@ module.exports = {
       [FuseV1Options.OnlyLoadAppFromAsar]: true,
     }),
   ],
+  publishers: [
+    {
+      name: "@electron-forge/publisher-github",
+      config: {
+        repository: {
+          owner: "unchained-capital",
+          name: "gpg-bridge",
+        },
+        prerelease: false,
+      },
+    },
+  ],
 };
