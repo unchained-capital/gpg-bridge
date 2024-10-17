@@ -7,9 +7,12 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        platform: [linux, darwin, win32]
+        arch: [x64]
     steps:
       - uses: actions/checkout@v3
 
@@ -21,44 +24,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build for all platforms
-        run: npm run package-all
+      - name: Build for ${{ matrix.os }}
+        run: npm run package-${{ matrix.platform }}
 
-      - name: Zip Windows Asset
-        run: zip -r GPG-Bridge-win.zip dist/GPG-Bridge-win32-x64
+      - name: Zip Asset
+        run: |
+          zip -r GPG-Bridge-${{ matrix.platform }}.zip dist/GPG-Bridge-${{ matrix.platform }}-x64
 
-      - name: Upload Windows Asset
+      - name: Upload Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./GPG-Bridge-win.zip
-          asset_name: GPG-Bridge-win.zip
-          asset_content_type: application/zip
-
-      - name: Zip macOS Asset
-        run: zip -r GPG-Bridge-mac.zip dist/GPG-Bridge-darwin-x64 dist/GPG-Bridge-darwin-arm64
-
-      - name: Upload macOS Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./GPG-Bridge-mac.zip
-          asset_name: GPG-Bridge-mac.zip
-          asset_content_type: application/zip
-
-      - name: Zip Linux Asset
-        run: zip -r GPG-Bridge-linux.zip dist/GPG-Bridge-linux-x64
-
-      - name: Upload Linux Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./GPG-Bridge-linux.zip
-          asset_name: GPG-Bridge-linux.zip
+          asset_path: ./GPG-Bridge-${{ matrix.platform }}.zip
+          asset_name: GPG-Bridge-${{ matrix.platform }}.zip
           asset_content_type: application/zip

@@ -26,7 +26,7 @@ export NPM_CONFIG_REGISTRY=https://registry.npmjs.org/
 npm install
 ```
 
-- Run the server `npm run  ev`
+- Run the server `npm run dev`
 
 Now you can access it from the command line using [websocat](https://github.com/vi/websocat).
 
