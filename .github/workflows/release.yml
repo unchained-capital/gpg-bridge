@@ -12,6 +12,13 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - os: macos-latest
+            make_command: make:mac
+          - os: ubuntu-latest
+            make_command: make:linux
+          - os: windows-latest
+            make_command: make:win
 
     steps:
       - name: Check out Git repository
@@ -26,7 +33,7 @@ jobs:
         run: npm ci
 
       - name: Make Electron app
-        run: npm run make
+        run: npm run ${{ matrix.make_command }}
 
       - name: Publish Electron app
         env:
