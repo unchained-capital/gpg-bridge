@@ -5,14 +5,16 @@
   "main": "main.js",
   "scripts": {
     "dev": "electron .",
-    "package-mac": "electron-packager . GPG-Bridge --out=dist --platform=darwin --arch=x64,arm64 --icon=icons/mac/icon.icns --overwrite",
-    "package-linux": "electron-packager . GPG-Bridge --out=dist --platform=linux --arch=x64 --icon=icons/png/128x128.png --overwrite",
-    "package-win": "electron-packager . GPG-Bridge --out=dist --platform=win32 --arch=x64 --icon=icons/win/icon.ico --overwrite",
+    "package-mac": "npx --yes electron-packager . GPG-Bridge --out=dist --platform=darwin --arch=x64,arm64 --icon=icons/mac/icon.icns --overwrite",
+    "package-linux": "npx --yes electron-packager . GPG-Bridge --out=dist --platform=linux --arch=x64 --icon=icons/png/128x128.png --overwrite",
+    "package-win": "npx --yes electron-packager . GPG-Bridge --out=dist --platform=win32 --arch=x64 --icon=icons/win/icon.ico --overwrite",
     "package-all": "npm run package-mac && npm run package-linux && npm run package-win"
   },
   "dependencies": {
     "kill-port": "^2.0.1",
-    "ws": "^8.18.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
     "@electron/packager": "^18.3.5",
     "electron": "^33.0.1"
   }
