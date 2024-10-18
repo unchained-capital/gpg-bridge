@@ -1,5 +1,3 @@
-// renderer.js
-
 window.api.onServerStatus((event, data) => {
   const statusElement = document.getElementById("status");
   if (data.running) {

@@ -1,16 +1,9 @@
-// main.js
+console.log("Current PATH:", process.env.PATH);
 
-const {
-  app,
-  BrowserWindow,
-  Tray,
-  Menu,
-  nativeImage,
-  ipcMain,
-} = require("electron");
+const { app, BrowserWindow, Tray, Menu } = require("electron");
 const path = require("path");
 const WebSocket = require("ws");
-const { exec, spawn } = require("child_process");
+const { exec, spawn, execSync } = require("child_process");
 const fs = require("fs").promises;
 const kill = require("kill-port");
 const { z } = require("zod");
@@ -147,6 +140,7 @@ async function setupWebSocketServer() {
 // Helper Functions
 
 async function handleSignRequest(ws, messageToSign, fingerprint) {
+  const GPG_PATH = await findGpgPath();
   try {
     // Decode the message from base64
     const decodedMessage = Buffer.from(messageToSign, "base64");
@@ -166,8 +160,18 @@ async function handleSignRequest(ws, messageToSign, fingerprint) {
       communication: "Signing process started. Please touch your YubiKey.",
     });
 
+    if (!GPG_PATH) {
+      const errorMsg = "GPG executable not found.";
+      console.error(errorMsg);
+      sendMessage(ws, {
+        communication: "Failed to start GPG process",
+        error: errorMsg,
+      });
+      return;
+    }
+
     // Execute the GPG command to sign the message using spawn
-    const signProcess = spawn("gpg", [
+    const signProcess = spawn(GPG_PATH, [
       "--sign",
       "--detach-sign",
       "--armor",
@@ -190,6 +194,14 @@ async function handleSignRequest(ws, messageToSign, fingerprint) {
       stderr += data.toString();
     });
 
+    signProcess.on("error", (error) => {
+      console.error("Error spawning GPG process:", error.message);
+      sendMessage(ws, {
+        communication: "Failed to start GPG process",
+        error: error.message,
+      });
+    });
+
     signProcess.on("close", async (code) => {
       try {
         // Clean up the temporary file
@@ -207,6 +219,7 @@ async function handleSignRequest(ws, messageToSign, fingerprint) {
         });
       } else {
         // Signing failed
+        console.error("GPG signing process failed:", stderr);
         sendMessage(ws, { communication: "Signing process failed." });
         sendMessage(ws, {
           communication: "Signing failed",
@@ -215,10 +228,10 @@ async function handleSignRequest(ws, messageToSign, fingerprint) {
       }
     });
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error in sign request:", error);
     sendMessage(ws, {
       communication: "Internal server error",
-      error: JSON.stringify(error),
+      error: error.message,
     });
   }
 }
@@ -226,12 +239,15 @@ async function handleSignRequest(ws, messageToSign, fingerprint) {
 async function handleGetGpgPubKeys(ws) {
   try {
     const keys = await getGpgKeys();
-    if (keys) {
+    if (keys && keys.length > 0) {
+      console.log("GPG keys retrieved successfully.");
       sendMessage(ws, { communication: "Keys retrieved.", gpgkeys: keys });
     } else {
-      console.log("No Keys found in the output.");
+      console.log("No GPG keys found.");
+      sendMessage(ws, { communication: "No GPG keys found." });
     }
   } catch (error) {
+    console.error("Error retrieving GPG keys:", error);
     sendMessage(ws, {
       communication: "Failed to retrieve keys.",
       error: error.message,
@@ -240,59 +256,69 @@ async function handleGetGpgPubKeys(ws) {
 }
 
 async function getGpgKeys() {
+  const GPG_PATH = await findGpgPath();
   return new Promise((resolve, reject) => {
-    // Use exec here as the output is relatively small
-    exec("gpg --list-keys --with-colons", async (error, stdout, stderr) => {
-      if (error) {
-        return reject(new Error(stderr));
-      }
+    if (!GPG_PATH) {
+      const errorMsg = "GPG executable not found.";
+      console.error(errorMsg);
+      return reject(new Error(errorMsg));
+    }
 
-      const lines = stdout.split("\n");
-      const keys = [];
-      let currentKey = {};
-
-      lines.forEach((line) => {
-        const parts = line.split(":");
-        if (parts[0] === "pub") {
-          currentKey = {
-            fingerprint: "",
-            uid: "",
-            pubkey: "",
-          };
-        } else if (parts[0] === "fpr") {
-          currentKey.fingerprint = parts[9];
-        } else if (parts[0] === "uid") {
-          currentKey.uid = parts[9];
-          keys.push({ ...currentKey });
+    exec(
+      `"${GPG_PATH}" --list-keys --with-colons`,
+      async (error, stdout, stderr) => {
+        if (error) {
+          console.error("Error listing GPG keys:", stderr);
+          return reject(new Error(stderr));
         }
-      });
 
-      // Fetch armored keys using exec with Promises
-      try {
-        const armoredKeys = await Promise.all(
-          keys.map((key) =>
-            execPromise(
-              `gpg --export --armor --export-options export-minimal ${key.fingerprint}!`
-            ).then(
-              ({ stdout }) => stdout,
-              () => "Failed to retrieve pubkey."
+        const lines = stdout.split("\n");
+        const keys = [];
+        let currentKey = {};
+
+        lines.forEach((line) => {
+          const parts = line.split(":");
+          if (parts[0] === "pub") {
+            currentKey = {
+              fingerprint: "",
+              uid: "",
+              pubkey: "",
+            };
+          } else if (parts[0] === "fpr") {
+            currentKey.fingerprint = parts[9];
+          } else if (parts[0] === "uid") {
+            currentKey.uid = parts[9];
+            keys.push({ ...currentKey });
+          }
+        });
+
+        // Fetch armored keys using exec with Promises
+        try {
+          const armoredKeys = await Promise.all(
+            keys.map((key) =>
+              execPromise(
+                `gpg --export --armor --export-options export-minimal ${key.fingerprint}!`
+              ).then(
+                ({ stdout }) => stdout,
+                () => "Failed to retrieve pubkey."
+              )
             )
-          )
-        );
+          );
 
-        keys.forEach((key, index) => {
-          key.pubkey = armoredKeys[index];
-        });
+          keys.forEach((key, index) => {
+            key.pubkey = armoredKeys[index];
+          });
 
-        resolve(keys);
-      } catch (err) {
-        // If fetching any key fails, mark its pubkey accordingly
-        keys.forEach((key) => {
-          key.pubkey = "Error retrieving pubkey.";
-        });
-        resolve(keys);
+          resolve(keys);
+        } catch (err) {
+          // If fetching any key fails, mark its pubkey accordingly
+          keys.forEach((key) => {
+            key.pubkey = "Error retrieving pubkey.";
+          });
+          resolve(keys);
+        }
       }
-    });
+    );
   });
 }
 
@@ -335,12 +361,41 @@ async function initializeApp() {
   // Continue with other initialization tasks if necessary
 }
 
+// Function to find the GPG executable
+async function findGpgPath() {
+  const possiblePaths = [
+    "/usr/local/bin/gpg",
+    "/opt/homebrew/bin/gpg", // For Apple Silicon Macs with Homebrew
+    "/usr/bin/gpg",
+    "/bin/gpg",
+    "C:\\Program Files (x86)\\GnuPG\\bin\\gpg.exe", // Windows path
+    "C:\\Program Files\\GnuPG\\bin\\gpg.exe", // Windows path
+    // Add more paths if needed
+  ];
+
+  for (const path of possiblePaths) {
+    try {
+      await fs.access(path, fs.constants.X_OK);
+      console.log("GPG found at:", path);
+      return path;
+    } catch (error) {
+      // Path not accessible or not executable, continue to next path
+    }
+  }
+
+  console.error("GPG not found in any known paths.");
+  return null;
+}
+
 // Electron App Event Listeners
 app.whenReady().then(async () => {
   await initializeApp(); // Ensure 'temp' directory is created
   createWindow();
   createTray();
   setupLogging();
+
+  const GPG_PATH = await findGpgPath();
+  console.log("Using GPG path:", GPG_PATH);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
