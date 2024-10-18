@@ -21,10 +21,10 @@ jobs:
         include:
           - os: macos-latest
             make_command: make:mac
-          # - os: ubuntu-latest
-          #   make_command: make:linux
-          # - os: windows-latest
-          #   make_command: make:win
+          - os: ubuntu-latest
+            make_command: make:linux
+          - os: windows-latest
+            make_command: make:win
 
     steps:
       - name: Check out Git repository
