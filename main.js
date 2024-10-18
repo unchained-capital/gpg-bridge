@@ -1,5 +1,3 @@
-console.log("Current PATH:", process.env.PATH);
-
 const { app, BrowserWindow, Tray, Menu } = require("electron");
 const path = require("path");
 const WebSocket = require("ws");
@@ -160,6 +158,12 @@ async function handleSignRequest(ws, messageToSign, fingerprint) {
       communication: "Signing process started. Please touch your YubiKey.",
     });
 
+    // Send a message to the renderer process to update the UI
+    sendToRenderer(
+      "yubikey-touch-required",
+      "You may need to touch your YubiKey to sign."
+    );
+
     if (!GPG_PATH) {
       const errorMsg = "GPG executable not found.";
       console.error(errorMsg);
@@ -217,6 +221,8 @@ async function handleSignRequest(ws, messageToSign, fingerprint) {
           message: messageToSign,
           signature: stdout,
         });
+        // Inform the renderer that the signing is complete
+        sendToRenderer("yubikey-touch-complete", "Signing process completed.");
       } else {
         // Signing failed
         console.error("GPG signing process failed:", stderr);
@@ -297,10 +303,16 @@ async function getGpgKeys() {
           const armoredKeys = await Promise.all(
             keys.map((key) =>
               execPromise(
-                `gpg --export --armor --export-options export-minimal ${key.fingerprint}!`
+                `${GPG_PATH} --export --armor --export-options export-minimal ${key.fingerprint}!`
               ).then(
-                ({ stdout }) => stdout,
-                () => "Failed to retrieve pubkey."
+                ({ stdout }) => {
+                  console.log("Armored key:", stdout);
+                  return stdout;
+                },
+                (err) => {
+                  console.error("Failed to retrieve pubkey.", err);
+                  return "Failed to retrieve pubkey.";
+                }
               )
             )
           );
@@ -368,12 +380,32 @@ async function findGpgPath() {
     "/opt/homebrew/bin/gpg", // For Apple Silicon Macs with Homebrew
     "/usr/bin/gpg",
     "/bin/gpg",
-    "C:\\Program Files (x86)\\GnuPG\\bin\\gpg.exe", // Windows path
-    "C:\\Program Files\\GnuPG\\bin\\gpg.exe", // Windows path
+    "/opt/local/bin/gpg", // MacPorts installation path
+    "/snap/bin/gpg", // Snap package installation path on Linux
+
+    "C:\\Program Files (x86)\\GnuPG\\bin\\gpg.exe", // Windows path (32-bit)
+    "C:\\Program Files\\GnuPG\\bin\\gpg.exe", // Windows path (64-bit)
+    "C:\\Program Files\\Git\\usr\\bin\\gpg.exe", // Git for Windows path
+
+    process.env.ProgramFiles + "\\GnuPG\\bin\\gpg.exe", // Dynamic Windows path
+    process.env["ProgramFiles(x86)"] + "\\GnuPG\\bin\\gpg.exe", // Dynamic Windows path (32-bit)
+
     // Add more paths if needed
   ];
 
+  // Check if gpg is in PATH
+  try {
+    const { stdout } = await execPromise("which gpg || where gpg");
+    console.log("which gpg || where gpg", stdout.trim());
+    if (stdout.trim()) {
+      possiblePaths.unshift(stdout.trim());
+    }
+  } catch (error) {
+    console.log("GPG not found in PATH");
+  }
+
   for (const path of possiblePaths) {
+    console.log("Checking path hard coded path:", path);
     try {
       await fs.access(path, fs.constants.X_OK);
       console.log("GPG found at:", path);
@@ -393,6 +425,8 @@ app.whenReady().then(async () => {
   createWindow();
   createTray();
   setupLogging();
+
+  console.log("Current PATH:", process.env.PATH);
 
   const GPG_PATH = await findGpgPath();
   console.log("Using GPG path:", GPG_PATH);

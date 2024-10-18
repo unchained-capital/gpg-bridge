@@ -1,10 +1,28 @@
+require("dotenv").config();
+
 const { FusesPlugin } = require("@electron-forge/plugin-fuses");
 const { FuseV1Options, FuseVersion } = require("@electron/fuses");
 
 module.exports = {
   packagerConfig: {
-    asar: false, // Disable ASAR packaging
+    asar: false,
     icon: "./icons/icon",
+    // osxSign: {
+    //   identity: "Apple Development: Joe Brauckmann (Z7RDUD6WJ5)",
+    //   "hardened-runtime": true,
+    //   entitlements: "entitlements.plist",
+    //   "entitlements-inherit": "entitlements.plist",
+    //   "signature-flags": "library",
+    //   "gatekeeper-assess": false,
+    //   verbose: true, // Add this line for more detailed logging
+    // },
+    // osxNotarize: {
+    //   tool: "notarytool",
+    //   appleId: process.env.APPLE_ID,
+    //   appleIdPassword: process.env.APPLE_PASSWORD,
+    //   teamId: process.env.APPLE_TEAM_ID,
+    // },
+    // ignore: [/^\/src/, /^\/test/, /^\/scripts/, /^\/\.vscode/, /^\/\.git/],
   },
   rebuildConfig: {
     force: true,

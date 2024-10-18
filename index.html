@@ -79,10 +79,20 @@
         background-color: rgba(255, 255, 255, 0.3);
         border-radius: 4px;
       }
+
+      /* Add this new style for YubiKey messages */
+      #yubikey-message {
+        color: #00ff00; /* Bright green color */
+        font-weight: bold;
+      }
     </style>
   </head>
   <body>
     <h1>GPG Bridge</h1>
+    <!-- Updated YubiKey message div -->
+    <div id="yubikey-prompt" style="display: none">
+      <p id="yubikey-message"></p>
+    </div>
     <div id="status">Checking server status...</div>
     <div id="log-container"></div>
 
