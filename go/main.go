@@ -18,7 +18,17 @@ var upgrader = websocket.Upgrader{
     WriteBufferSize: 1024,
 }
 
-func reader(conn *websocket.Conn) {
+func writer(conn *websocket.Conn, results <-chan websocket_result) {
+    for result := range results {
+		response_json, _ := json.Marshal(result)
+	    if err := conn.WriteMessage(websocket.TextMessage, response_json); err != nil {
+    	    log.Println(err)
+    	}
+    }
+}
+
+
+func reader(conn *websocket.Conn, results chan<- websocket_result) {
     for {
         messageType, message, err := conn.ReadMessage()
         if err != nil {
@@ -26,13 +36,11 @@ func reader(conn *websocket.Conn) {
             return
         }
 
-        response := process_command(message)
-        response_json, _ := json.Marshal(response)
+		if messageType == websocket.TextMessage {
+	    	process_command(message, results)
+	    	close(results)
+		}
 
-        if err := conn.WriteMessage(messageType, response_json); err != nil {
-            log.Println(err)
-            return
-        }
     }
 }
 
@@ -47,7 +55,9 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
     // helpful log statement to show connections
     log.Println("Client Connected")
 
-    reader(ws)
+	results := make(chan websocket_result, 5)
+	go writer(ws, results)
+    reader(ws, results)
 }
 
 func setupRoutes() {

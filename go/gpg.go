@@ -32,12 +32,15 @@ type websocket_command struct {
     Fingerprint string `json: "fingerprint,omitempty"`
 }
 
-func gpg_sign_message(message string, fingerprint string) websocket_result {
+func gpg_sign_message(message string, fingerprint string, results chan <- websocket_result) {
 	decoded, _ := base64.StdEncoding.DecodeString(message)
 	tempfile, _ := os.CreateTemp("", "message-*")
 	tempfile.Write(decoded)
 	defer os.Remove(tempfile.Name())
 
+	results <- websocket_result{
+		Communication: "Signing process started. Please touch your Yubikey.",
+	}
 
 	command := exec.Command(
 		"gpg",
@@ -58,13 +61,14 @@ func gpg_sign_message(message string, fingerprint string) websocket_result {
 	result, err := command.Output()
 
 	if err != nil {
-		return websocket_result{
+		results <- websocket_result{
 			Communication: "Signing failed",
 			Error: buf.String(),
 		}
+		return
 	}
 
-	return websocket_result{
+	results <- websocket_result{
 		Communication: "Message has been signed successfully.",
 		Message: message,
 		Signature: string(result),
@@ -135,25 +139,29 @@ func gpg_getkeys() websocket_result {
 //}
 
 
-func process_command(data []byte) websocket_result {
+func process_command(data []byte, results chan<- websocket_result) {
 	var command websocket_command
 
 	err := json.Unmarshal(data, &command)
 
 	if err != nil {
-		return websocket_result{
+		results <- websocket_result{
 			Communication: "Invalid payload.",
 		}
+		return
 	}
 
 	switch command.Command {
 		case "sign":
-            return gpg_sign_message(command.Message, command.Fingerprint)
+            gpg_sign_message(command.Message, command.Fingerprint, results)
+            return
 		case "getkeys":
-            return gpg_getkeys()
+            results <- gpg_getkeys()
+            return
 		default:
-			return websocket_result{
+			results <- websocket_result{
 				Communication: "Unknown command.",
 			}
+			return
 	}
 }
