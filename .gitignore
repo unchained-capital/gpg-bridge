@@ -1,4 +1,5 @@
 node_modules
-bunfig_bak.toml
 dist
-.*.bun-build
+.DS_Store
+out/
+.env
