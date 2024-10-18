@@ -1,11 +1,117 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>GPG Bridge Server Status</title>
+    <title>GPG Bridge</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        padding: 0;
+        position: relative;
+        background-color: #000000; /* Dark black background */
+      }
+      body::before {
+        content: "";
+        background-image: url("assets/troll.png");
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-position: center center;
+        opacity: 0.12; /* Adjust this value to change the opacity (0.1 = 10% opacity) */
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: -1;
+      }
+      h1 {
+        color: white;
+        margin-bottom: 20px;
+      }
+      #status {
+        background-color: rgba(
+          255,
+          255,
+          255,
+          0.1
+        ); /* Slightly visible white background */
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      #log-container {
+        width: 400px; /* Set a fixed width */
+        height: 400px; /* Set height equal to width for square shape */
+        overflow-y: auto; /* Enable vertical scrolling if content exceeds height */
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 10px; /* Add rounded corners */
+        padding: 10px;
+        background-color: rgba(0, 0, 0, 0.5);
+        font-family: monospace;
+        font-size: 12px;
+        line-height: 1.4;
+        white-space: pre-wrap; /* Preserve whitespace and wrap text */
+        word-break: break-all; /* Break long words to prevent horizontal scrolling */
+      }
+      .log-entry {
+        margin-bottom: 5px;
+      }
+      .error-log {
+        color: #ff6b6b;
+      }
+      /* Customize scrollbar for webkit browsers */
+      #log-container::-webkit-scrollbar {
+        width: 8px;
+      }
+      #log-container::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 0 10px 10px 0;
+      }
+      #log-container::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.3);
+        border-radius: 4px;
+      }
+    </style>
   </head>
   <body>
-    <h1>GPG Bridge Server Status</h1>
+    <h1>GPG Bridge</h1>
     <div id="status">Checking server status...</div>
+    <div id="log-container"></div>
+
     <script src="renderer.js"></script>
+    <script>
+      const logContainer = document.getElementById("log-container");
+      let lastLogMessage = "";
+
+      window.electronAPI.onLogMessage((message) => {
+        if (message !== lastLogMessage) {
+          lastLogMessage = message;
+          const logEntry = document.createElement("div");
+          logEntry.textContent = message;
+          logEntry.classList.add("log-entry");
+          if (message.includes("ERROR:")) {
+            logEntry.classList.add("error-log");
+          }
+          logContainer.appendChild(logEntry);
+          logContainer.scrollTop = logContainer.scrollHeight;
+        }
+      });
+
+      // Add a placeholder message if there are no logs
+      if (logContainer.childElementCount === 0) {
+        const placeholderEntry = document.createElement("div");
+        placeholderEntry.textContent = "No logs yet...";
+        placeholderEntry.classList.add("log-entry");
+        logContainer.appendChild(placeholderEntry);
+      }
+    </script>
   </body>
 </html>
