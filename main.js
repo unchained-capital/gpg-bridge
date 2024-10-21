@@ -5,6 +5,11 @@ const { exec, spawn, execSync } = require("child_process");
 const fs = require("fs").promises;
 const kill = require("kill-port");
 const { z } = require("zod");
+const tmp = require("tmp")
+tmp.setGracefulCleanup()
+
+// Temporary directory location
+let tempDir
 
 // Schema Definitions
 const GpgKeySchema = z.object({
@@ -143,14 +148,8 @@ async function handleSignRequest(ws, messageToSign, fingerprint) {
     // Decode the message from base64
     const decodedMessage = Buffer.from(messageToSign, "base64");
 
-    // Define the temporary directory path
-    const tempDir = path.join(__dirname, "temp");
-
-    // Ensure the 'temp' directory exists
-    await fs.mkdir(tempDir, { recursive: true });
-
     // Define the temporary file path
-    const tempFilePath = path.join(tempDir, `message_${Date.now()}.txt`);
+    const tempFilePath = path.join(tempDir.name, `message_${Date.now()}.txt`);
     await fs.writeFile(tempFilePath, decodedMessage);
 
     // Notify the client about the signing process
@@ -357,18 +356,7 @@ function sendMessage(ws, payload) {
 
 // Initialize Temporary Directory on App Startup
 async function initializeApp() {
-  // Define the temporary directory path
-  const tempDir = path.join(__dirname, "temp");
-
-  // Ensure the 'temp' directory exists
-  try {
-    await fs.mkdir(tempDir, { recursive: true });
-    console.log("Temp directory is ready.");
-  } catch (error) {
-    console.error("Failed to create temp directory:", error);
-    // You might choose to quit the app if temp directory creation fails
-    app.quit();
-  }
+  tempDir = tmp.dirSync()
 
   // Continue with other initialization tasks if necessary
 }
