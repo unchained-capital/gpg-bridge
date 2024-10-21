@@ -5,7 +5,7 @@ const { exec, spawn, execSync } = require("child_process");
 const fs = require("fs").promises;
 const kill = require("kill-port");
 const { z } = require("zod");
-const tmp = require("tmp")
+const tmp = require("tmp-promise")
 tmp.setGracefulCleanup()
 
 // Temporary directory location
@@ -356,7 +356,7 @@ function sendMessage(ws, payload) {
 
 // Initialize Temporary Directory on App Startup
 async function initializeApp() {
-  tempDir = tmp.dirSync()
+  tempDir = await tmp.dir()
 
   // Continue with other initialization tasks if necessary
 }
