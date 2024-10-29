@@ -1,7 +1,7 @@
 const { app, BrowserWindow, Tray, Menu } = require("electron");
 const path = require("path");
 const WebSocket = require("ws");
-const { exec, spawn, execSync } = require("child_process");
+const { execFile, spawn } = require("child_process");
 const fs = require("fs").promises;
 const kill = require("kill-port");
 const { z } = require("zod");
@@ -269,8 +269,9 @@ async function getGpgKeys() {
       return reject(new Error(errorMsg));
     }
 
-    exec(
-      `"${GPG_PATH}" --list-keys --with-colons`,
+    execFile(
+        GPG_PATH,
+      ["--list-keys", "--with-colons"],
       async (error, stdout, stderr) => {
         if (error) {
           console.error("Error listing GPG keys:", stderr);
