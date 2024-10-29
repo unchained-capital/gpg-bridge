@@ -303,7 +303,11 @@ async function getGpgKeys() {
           const armoredKeys = await Promise.all(
             keys.map((key) =>
               execPromise(
-                `${GPG_PATH} --export --armor --export-options export-minimal ${key.fingerprint}!`
+                 GPG_PATH,
+                 [
+                    "--export", "--armor", "--export-options",
+                    "export-minimal", `${key.fingerprint}!`
+                 ]
               ).then(
                 ({ stdout }) => {
                   console.log("Armored key:", stdout);
@@ -334,9 +338,9 @@ async function getGpgKeys() {
   });
 }
 
-function execPromise(command) {
+function execPromise(command, args) {
   return new Promise((resolve, reject) => {
-    exec(command, (error, stdout, stderr) => {
+    execFile(command, args, (error, stdout, stderr) => {
       if (error) {
         reject(error);
       } else {
