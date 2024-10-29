@@ -149,7 +149,7 @@ async function handleSignRequest(ws, messageToSign, fingerprint) {
     const decodedMessage = Buffer.from(messageToSign, "base64");
 
     // Define the temporary file path
-    const tempFilePath = path.join(tempDir.name, `message_${Date.now()}.txt`);
+    const tempFilePath = path.join(tempDir.path, `message_${Date.now()}.txt`);
     await fs.writeFile(tempFilePath, decodedMessage);
 
     // Notify the client about the signing process
