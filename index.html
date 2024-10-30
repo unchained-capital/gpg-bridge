@@ -118,7 +118,7 @@
       // Add a placeholder message if there are no logs
       if (logContainer.childElementCount === 0) {
         const placeholderEntry = document.createElement("div");
-        placeholderEntry.textContent = "No logs yet...";
+        placeholderEntry.textContent = "";
         placeholderEntry.classList.add("log-entry");
         logContainer.appendChild(placeholderEntry);
       }

@@ -26,7 +26,7 @@ export NPM_CONFIG_REGISTRY=https://registry.npmjs.org/
 npm install
 ```
 
-- Run the server `npm run dev`
+- Run the server `npm run start`
 
 Now you can access it from the command line using [websocat](https://github.com/vi/websocat).
 
@@ -36,7 +36,7 @@ echo '{"command": "sign", "message": "SGVsbG8sIHdvcmxkIQ==", "fingerprint": "YOU
 
 # How to compile for "prod" into single-executable.
 
-`npm run package-all`
+`npm run make:all`
 
 This will create a single executable in the `dist` folder for the specific platform you're running on.
 
@@ -44,5 +44,5 @@ This will create a single executable in the `dist` folder for the specific platf
 
 - [x] Should show itself in the system tray.
 - [x] Show itself in the task bar.
-- [ ] Better UI
+- [x] Better UI
 - [ ] installable without hassle.
