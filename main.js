@@ -1,4 +1,5 @@
 const { app, BrowserWindow, Tray, Menu } = require("electron");
+if (require('electron-squirrel-startup')) app.quit();
 const path = require("path");
 const WebSocket = require("ws");
 const { execFile, spawn } = require("child_process");
