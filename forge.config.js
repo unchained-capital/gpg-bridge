@@ -1,4 +1,5 @@
 require("dotenv").config();
+const pkg = require("./package.json")
 
 const { FusesPlugin } = require("@electron-forge/plugin-fuses");
 const { FuseV1Options, FuseVersion } = require("@electron/fuses");
@@ -32,9 +33,11 @@ module.exports = {
       name: "@electron-forge/maker-wix",
       config: {
         name: "GPGBridge",
+        language: 1033,
         manufacturer: "Unchained",
-        exe: "GPGBridge.exe",
+        //exe: "GPGBridge.exe",
         icon: "./icons/win/icon.ico",
+        version: pkg.version,
       },
     },
     {

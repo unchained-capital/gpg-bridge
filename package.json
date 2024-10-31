@@ -1,6 +1,6 @@
 {
   "name": "gpg-bridge",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "A very basic bridge to gpg over websockets",
   "license": "MIT",
   "main": "main.js",
