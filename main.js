@@ -3,13 +3,17 @@ const path = require("path");
 const WebSocket = require("ws");
 const { execFile, spawn } = require("child_process");
 const fs = require("fs").promises;
-const kill = require("kill-port");
 const { z } = require("zod");
 const tmp = require("tmp-promise")
+const isMac = process.platform === 'darwin'
+
 tmp.setGracefulCleanup()
 
 // Temporary directory location
 let tempDir
+
+// gpg path - we use this global variable to memo-ise the findGpgPath function
+let GPG_Path = null
 
 // Schema Definitions
 const GpgKeySchema = z.object({
@@ -20,6 +24,8 @@ const GpgKeySchema = z.object({
 
 const OutboundPayloadSchema = z.object({
   message: z.string().optional(),
+  name: z.string().optional(),
+  version: z.string().optional(),
   communication: z.string(),
   signature: z.string().optional(),
   error: z.string().optional(),
@@ -27,7 +33,7 @@ const OutboundPayloadSchema = z.object({
 });
 
 const InboundPayloadSchema = z.object({
-  command: z.enum(["sign", "getkeys"]),
+  command: z.enum(["sign", "getkeys", "version"]),
   message: z.string().optional(),
   fingerprint: z.string().optional(),
 });
@@ -51,9 +57,55 @@ function createWindow() {
   mainWindow.loadFile("index.html");
 
   // Wait for the window to finish loading before setting up the WebSocket server
-  mainWindow.webContents.on("did-finish-load", () => {
+  mainWindow.webContents.on("did-finish-load", async () => {
+    console.log(`${app.getName()} ${app.getVersion()}`)
+    const GPG_PATH = await findGpgPath();
+    console.log("Using gpg executable ", GPG_PATH);
     setupWebSocketServer();
+
   });
+
+  const template = [
+    // { role: 'appMenu' }
+    ...(isMac
+      ? [{
+          label: app.name,
+          submenu: [
+            { role: 'about' },
+            { type: 'separator' },
+            { role: 'services' },
+            { type: 'separator' },
+            { role: 'hide' },
+            { role: 'hideOthers' },
+            { role: 'unhide' },
+            { type: 'separator' },
+            { role: 'quit' }
+          ]
+        }]
+      : []),
+    // { role: 'fileMenu' }
+    {
+      label: 'File',
+      submenu: [
+        isMac ? { role: 'close' } : { role: 'quit' }
+      ]
+    },
+    {
+      role: 'help',
+      submenu: [
+        {
+          label: 'About',
+          click: async () => {
+            const { shell } = require('electron')
+            await shell.openExternal('https://github.com/unchained-capital/gpg-bridge')
+          }
+        }
+      ]
+    }
+  ]
+
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
 }
 
 // Function to create the system tray
@@ -80,29 +132,33 @@ function createTray() {
 
 // Function to send messages to the renderer process
 function sendToRenderer(channel, data) {
-  mainWindow.webContents.send(channel, data);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(channel, data);
+  }
 }
 
 // WebSocket Server Setup
 let wss;
 
 async function setupWebSocketServer() {
-  // Kill any existing server on port 5151
   try {
-    await kill(5151);
-    console.log("Killed existing process on port 5151.");
+    wss = new WebSocket.Server({ port: 5151 });
   } catch (e) {
-    console.log("Port 5151 is free.");
+    console.log("Error starting server on port 5151")
+      console.error("Shutting down in 5 seconds");
+      setTimeout(() => { app.quit(); }, 5000);
   }
 
-  wss = new WebSocket.Server({ port: 5151 });
+  wss.on("error", (msg) => {
+      console.error(msg);
+      console.error("Shutting down in 5 seconds");
+      setTimeout(() => { app.quit(); }, 5000);
+  });
 
   wss.on("connection", (ws) => {
     console.log("WebSocket connection opened.");
 
     ws.on("message", async (message) => {
-      console.log("Received message from client:", message);
-
       try {
         const parsedPayload = InboundPayloadSchema.parse(JSON.parse(message));
 
@@ -114,11 +170,15 @@ async function setupWebSocketServer() {
           );
         } else if (parsedPayload.command === "getkeys") {
           await handleGetGpgPubKeys(ws);
+        } else if (parsedPayload.command === "version") {
+          await handleGetVersion(ws);
         } else {
           sendMessage(ws, { communication: "Unknown command." });
+          console.error(`Unknown command ${parsedPayload.command}`)
         }
       } catch (error) {
         sendMessage(ws, { communication: "Invalid payload." });
+        console.error(`Invalid payload. ${error}`)
       }
     });
 
@@ -156,6 +216,8 @@ async function handleSignRequest(ws, messageToSign, fingerprint) {
     sendMessage(ws, {
       communication: "Signing process started. Please touch your YubiKey.",
     });
+
+    console.log(`Signing message with key\n${fingerprint}`)
 
     // Send a message to the renderer process to update the UI
     sendToRenderer(
@@ -215,6 +277,7 @@ async function handleSignRequest(ws, messageToSign, fingerprint) {
 
       if (code === 0) {
         // Signing successful
+        console.log(`Successfully signed message with\n${fingerprint}.`)
         sendMessage(ws, {
           communication: "Message has been signed successfully.",
           message: messageToSign,
@@ -230,6 +293,7 @@ async function handleSignRequest(ws, messageToSign, fingerprint) {
           communication: "Signing failed",
           error: stderr,
         });
+        sendToRenderer("yubikey-touch-complete", "Signing process failed.");
       }
     });
   } catch (error) {
@@ -242,13 +306,14 @@ async function handleSignRequest(ws, messageToSign, fingerprint) {
 }
 
 async function handleGetGpgPubKeys(ws) {
+  console.log("Retrieving GPG public keys.")
   try {
     const keys = await getGpgKeys();
     if (keys && keys.length > 0) {
       console.log("GPG keys retrieved successfully.");
       sendMessage(ws, { communication: "Keys retrieved.", gpgkeys: keys });
     } else {
-      console.log("No GPG keys found.");
+      console.error("No GPG keys found.");
       sendMessage(ws, { communication: "No GPG keys found." });
     }
   } catch (error) {
@@ -310,33 +375,33 @@ async function getGpgKeys() {
                  ]
               ).then(
                 ({ stdout }) => {
-                  console.log("Armored key:", stdout);
-                  return stdout;
+                  key.pubkey = stdout;
                 },
                 (err) => {
-                  console.error("Failed to retrieve pubkey.", err);
-                  return "Failed to retrieve pubkey.";
+                  console.error(`Failed to retrieve pubkey ${key.fingerprint}.`, err);
+                  key.pubkey = null;
                 }
               )
             )
           );
 
-          keys.forEach((key, index) => {
-            key.pubkey = armoredKeys[index];
-          });
-
-          resolve(keys);
+          resolve(keys.filter((key)=>key.pubkey));
         } catch (err) {
-          // If fetching any key fails, mark its pubkey accordingly
-          keys.forEach((key) => {
-            key.pubkey = "Error retrieving pubkey.";
-          });
-          resolve(keys);
+          reject("Error retrieving keys");
         }
       }
     );
   });
 }
+
+async function handleGetVersion(ws) {
+  sendMessage(ws, {
+    name: app.getName(),
+    version: app.getVersion(),
+    communication: "version",
+  });
+}
+
 
 function execPromise(command, args) {
   return new Promise((resolve, reject) => {
@@ -368,6 +433,9 @@ async function initializeApp() {
 
 // Function to find the GPG executable
 async function findGpgPath() {
+  if (GPG_Path) {
+    return GPG_Path;
+  }
   const possiblePaths = [
     "/usr/local/bin/gpg",
     "/opt/homebrew/bin/gpg", // For Apple Silicon Macs with Homebrew
@@ -388,20 +456,25 @@ async function findGpgPath() {
 
   // Check if gpg is in PATH
   try {
-    const { stdout } = await execPromise("which gpg || where gpg");
-    console.log("which gpg || where gpg", stdout.trim());
+    const { stdout } = await execPromise("which", ["gpg"]);
     if (stdout.trim()) {
       possiblePaths.unshift(stdout.trim());
     }
   } catch (error) {
-    console.log("GPG not found in PATH");
+    try {
+      const { stdout } = await execPromise("where", ["gpg"]);
+      if (stdout.trim()) {
+        possiblePaths.unshift(stdout.trim());
+      }
+    } catch (error) {
+      console.warn("GPG not found in PATH");
+    }
   }
 
   for (const path of possiblePaths) {
-    console.log("Checking path hard coded path:", path);
     try {
       await fs.access(path, fs.constants.X_OK);
-      console.log("GPG found at:", path);
+      GPG_Path = path;
       return path;
     } catch (error) {
       // Path not accessible or not executable, continue to next path
@@ -412,21 +485,19 @@ async function findGpgPath() {
   return null;
 }
 
+setupLogging();
+
 // Electron App Event Listeners
 app.whenReady().then(async () => {
   await initializeApp(); // Ensure 'temp' directory is created
   createWindow();
   createTray();
-  setupLogging();
-
-  console.log("Current PATH:", process.env.PATH);
-
-  const GPG_PATH = await findGpgPath();
-  console.log("Using GPG path:", GPG_PATH);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+      if (!mainWindow || mainWindow.isDestroyed()) {
+        createWindow();
+      }
     }
   });
 });
@@ -434,16 +505,17 @@ app.whenReady().then(async () => {
 // Quit when all windows are closed, except on macOS
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
-    app.quit();
+    app.exit(0);
   }
 });
 
 function setupLogging() {
   const originalLog = console.log;
   const originalError = console.error;
+  const originalWarn = console.warn
 
   console.log = (...args) => {
-    const logMessage = `${new Date().toISOString()} - LOG: ${args.join(" ")}`;
+    const logMessage = `${new Date().toLocaleTimeString()}  ${args.join(" ")}`;
     originalLog.apply(console, args);
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send("log-message", logMessage);
@@ -451,10 +523,18 @@ function setupLogging() {
   };
 
   console.error = (...args) => {
-    const logMessage = `${new Date().toISOString()} - ERROR: ${args.join(" ")}`;
+    const logMessage = `${new Date().toLocaleTimeString()}  ERROR: ${args.join(" ")}`;
     originalError.apply(console, args);
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send("log-message", logMessage);
     }
   };
+  console.warn = (...args) => {
+    const logMessage = `${new Date().toLocaleTimeString()}  WARNING: ${args.join(" ")}`;
+    originalWarn.apply(console, args);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("log-message", logMessage);
+    }
+  };
+
 }
