@@ -34,7 +34,7 @@ const OutboundPayloadSchema = z.object({
 });
 
 const InboundPayloadSchema = z.object({
-  command: z.enum(["sign", "getkeys", "version"]),
+  command: z.enum(["sign", "getkeys", "version", "importkey"]),
   message: z.string().optional(),
   fingerprint: z.string().optional(),
 });
@@ -173,7 +173,10 @@ async function setupWebSocketServer() {
           await handleGetGpgPubKeys(ws);
         } else if (parsedPayload.command === "version") {
           await handleGetVersion(ws);
-        } else {
+        } else if (parsedPayload.command === "importkey") {
+          await handleImportKey(ws, parsedPayload.message);
+        }
+        else {
           sendMessage(ws, { communication: "Unknown command." });
           console.error(`Unknown command ${parsedPayload.command}`)
         }
@@ -539,3 +542,89 @@ function setupLogging() {
   };
 
 }
+
+/**
+ * @async
+ * @param {WebSocket} ws - The WebSocket connection to respond through
+ * @param {string} pgpPublicKey - The base64 encoded PGP key to import
+ * @returns {Promise<void>}
+ * @description Processes an incoming PGP key from a client and imports it to the system's keyring
+ */
+async function handleImportKey(ws, pgpPublicKey) {
+  const GPG_PATH = await findGpgPath();
+  try {
+    const decodedMessage = Buffer.from(pgpPublicKey, "base64");
+    const tempFilePath = path.join(tempDir.path, `key_${Date.now()}.asc`);
+    await fs.writeFile(tempFilePath, decodedMessage);
+
+    console.log("Key import process started.");
+    sendMessage(ws, {
+      communication: "Key import process started.",
+    });
+
+    if (!GPG_PATH) {
+      const errorMsg = "GPG executable not found.";
+      console.error(errorMsg);
+      sendMessage(ws, {
+        communication: "Failed to start GPG process",
+        error: errorMsg,
+      });
+      return;
+    }
+
+    const ps = spawn(GPG_PATH, [
+      "--import",
+      tempFilePath,
+    ]);
+
+    let stdout = "";
+    let stderr = "";
+
+    ps.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    ps.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    ps.on("error", (error) => {
+      console.error("Error spawning GPG process:", error.message);
+      sendMessage(ws, {
+        communication: "Failed to start GPG process",
+        error: error.message,
+      });
+    });
+
+    ps.on("close", async (code) => {
+      try {
+        await fs.unlink(tempFilePath);
+      } catch (cleanupError) {
+        console.error("Error cleaning up temp file:", cleanupError);
+      }
+
+      if (code === 0) {
+        console.log("Key successfully imported.")
+        sendMessage(ws, {
+          communication: "Key successfully imported.",
+          message: "done",
+          out: stdout,
+        });
+      } else {
+        console.error("GPG import process failed:", stderr);
+        sendMessage(ws, { communication: "Import process failed." });
+        sendMessage(ws, {
+          communication: "import failed failed",
+          error: stderr,
+        });
+      }
+    });
+  } catch (error) {
+    console.error("Error in import request:", error);
+    sendMessage(ws, {
+      communication: "Internal server error",
+      error: error.message,
+    });
+  }
+}
+
