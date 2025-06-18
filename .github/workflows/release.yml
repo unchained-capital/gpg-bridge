@@ -48,8 +48,8 @@ jobs:
       #     p12-file-base64: ${{ secrets.APPLE_CERTIFICATE_P12 }}
       #     p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
 
-       - name: Make Electron app
-         run: npm run ${{ matrix.make_command }}
+      - name: Make Electron app
+        run: npm run ${{ matrix.make_command }}
       #   env:
       #     # Code signing environment variables for macOS
       #     CSC_LINK: ${{ secrets.APPLE_CERTIFICATE_P12 }}
