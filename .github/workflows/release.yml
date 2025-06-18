@@ -29,10 +29,10 @@ jobs:
 
     steps:
       - name: Check out Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
@@ -41,11 +41,26 @@ jobs:
           npm install -g @electron-forge/cli
           npm ci
 
-      - name: Make Electron app
-        run: npm run ${{ matrix.make_command }}
+      # - name: Import Code-Signing Certificates
+      #   if: matrix.os == 'macos-latest'
+      #   uses: Apple-Actions/import-codesign-certs@v2
+      #   with:
+      #     p12-file-base64: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+      #     p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+       - name: Make Electron app
+         run: npm run ${{ matrix.make_command }}
+      #   env:
+      #     # Code signing environment variables for macOS
+      #     CSC_LINK: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+      #     CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      #     # Notarization environment variables
+      #     APPLE_ID: ${{ secrets.APPLE_ID }}
+      #     APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      #     APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-build
           path: |
