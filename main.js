@@ -5,6 +5,7 @@ const WebSocket = require("ws");
 const { execFile, spawn } = require("child_process");
 const fs = require("fs").promises;
 const { z } = require("zod");
+const { createServer } = require('https');
 const tmp = require("tmp-promise")
 const isMac = process.platform === 'darwin'
 
@@ -138,13 +139,38 @@ function sendToRenderer(channel, data) {
   }
 }
 
+const acceptableRemoteHosts = ['::1', '127.0.0.1', 'localhost'];
+
 // WebSocket Server Setup
+
 let wss;
+let httpsServer;
 
 async function setupWebSocketServer() {
   try {
-    wss = new WebSocket.Server({ port: 5151 });
+    const [privateKey, certificate] = await Promise.all([
+      fs.readFile('assets/key.pem', 'utf8'),
+      fs.readFile('assets/cert.pem', 'utf8'),
+    ]);
+    const credentials = { key: privateKey, cert: certificate };
+
+    httpsServer = createServer(credentials);
+    wss = new WebSocket.Server({ 
+      // we hook the server up below so we can serve an HTML page too.
+      noServer: true,
+      verifyClient: ({secure, req}) => {
+        if (!secure) {
+          return false;
+        }
+        const remoteHost = req?.socket?.remoteAddress ?? 'NULL';
+        if (!acceptableRemoteHosts.includes(remoteHost)) {
+          return false;
+        }
+        return true;
+      }
+    });
   } catch (e) {
+    console.error(e);
     console.log("Error starting server on port 5151")
       console.error("Shutting down in 5 seconds");
       setTimeout(() => { app.quit(); }, 5000);
@@ -156,8 +182,8 @@ async function setupWebSocketServer() {
       setTimeout(() => { app.quit(); }, 5000);
   });
 
-  wss.on("connection", (ws) => {
-    console.log("WebSocket connection opened.");
+  wss.on("connection", (ws, req) => {
+    console.log("WebSocket connection opened. remoteAddress =", req?.socket?.remoteAddress ?? 'NULL');
 
     ws.on("message", async (message) => {
       try {
@@ -193,14 +219,58 @@ async function setupWebSocketServer() {
     });
   });
 
-  console.log(`WebSocket server running at ws://localhost:5151`);
-
   // Send initial server status to the renderer
   sendToRenderer("server-status", { running: true, port: 5151 });
 
   // Optionally, handle server closure
   wss.on("close", () => {
     sendToRenderer("server-status", { running: false });
+  });
+
+  httpsServer.on('upgrade', function upgrade(request, socket, head) {
+    wss.handleUpgrade(request, socket, head, function done(ws) {
+      wss.emit('connection', ws, request);
+    });
+  });
+
+  httpsServer.on('request', async function(req, res) {
+    const {method, url} = req;
+    if (method !== 'GET') {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+    }
+
+    const contentMap = {
+      '/connect': {
+        encoding: 'utf8',
+        contentType: 'text/html',
+        path: 'assets/success.html',
+      },
+      '/assets/bridge.png': {
+        encoding: undefined,
+        contentType: 'image/png',
+        path: 'assets/bridge.png',
+      },
+      '/assets/favicon.png': {
+        encoding: undefined,
+        contentType: 'image/png',
+        path: 'assets/Unchained_Favicon.png',
+      }
+    }
+    const content = contentMap[url];
+    if (!content) {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+    }
+
+    const { encoding, contentType, path } = content;
+    const body = await fs.readFile(path, encoding);
+    res.writeHead(200, { 'Content-Type': contentType });
+    res.end(body);
+  });
+
+  httpsServer.listen(5151, () => {
+      console.log('Secure WebSocket server listening on port 5151');
   });
 }
 
