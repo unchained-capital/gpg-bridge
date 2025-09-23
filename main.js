@@ -172,18 +172,18 @@ async function setupWebSocketServer() {
   } catch (e) {
     console.error(e);
     console.log("Error starting server on port 5151")
-      console.error("Shutting down in 5 seconds");
-      setTimeout(() => { app.quit(); }, 5000);
+    console.error("Shutting down in 5 seconds");
+    setTimeout(() => { app.quit(); }, 5000);
   }
 
   wss.on("error", (msg) => {
-      console.error(msg);
-      console.error("Shutting down in 5 seconds");
-      setTimeout(() => { app.quit(); }, 5000);
+    console.error(msg);
+    console.error("Shutting down in 5 seconds");
+    setTimeout(() => { app.quit(); }, 5000);
   });
 
-  wss.on("connection", (ws, req) => {
-    console.log("WebSocket connection opened. remoteAddress =", req?.socket?.remoteAddress ?? 'NULL');
+  wss.on("connection", (ws) => {
+    console.log("WebSocket connection opened.");
 
     ws.on("message", async (message) => {
       try {
