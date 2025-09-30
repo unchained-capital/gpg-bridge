@@ -35,6 +35,18 @@
         color: white;
         margin-bottom: 20px;
       }
+      #passcode {
+        background-color: rgba(
+          255,
+          255,
+          255,
+          0.1
+        ); /* Slightly visible white background */
+        padding: 10px;
+        border-radius: 10px;
+        text-align: left;
+        margin-bottom: 10px;
+      }
       #status {
         background-color: rgba(
           255,
@@ -93,6 +105,7 @@
     <div id="yubikey-prompt" style="display: none">
       <p id="yubikey-message"></p>
     </div>
+    <div id="passcode"></div>
     <div id="status">Checking server status...</div>
     <div id="log-container"></div>
 

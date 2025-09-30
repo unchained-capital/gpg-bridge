@@ -5,6 +5,10 @@ window.api.onServerStatus((event, data) => {
   } else {
     statusElement.textContent = "WebSocket server is not running";
   }
+  if (data.passCode) {
+    const passCodeElement = document.getElementById("passcode");
+    passCodeElement.textContent = `Passcode: ${data.passCode}`;
+  }
 });
 
 window.electron.onYubiKeyTouchRequired((message) => {

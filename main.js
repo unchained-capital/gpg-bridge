@@ -35,7 +35,7 @@ const OutboundPayloadSchema = z.object({
 });
 
 const InboundPayloadSchema = z.object({
-  command: z.enum(["sign", "getkeys", "version", "importkey"]),
+  command: z.enum(["sign", "getkeys", "version", "importkey", "passcode"]),
   message: z.string().optional(),
   fingerprint: z.string().optional(),
 });
@@ -141,6 +141,9 @@ function sendToRenderer(channel, data) {
 
 const acceptableRemoteHosts = ['::1', '127.0.0.1', 'localhost'];
 
+const passCode = Math.random().toString().substring(2, 8).padEnd(6, '0');
+console.log('INFO passCode =', passCode);
+
 // WebSocket Server Setup
 
 let wss;
@@ -185,10 +188,27 @@ async function setupWebSocketServer() {
   wss.on("connection", (ws) => {
     console.log("WebSocket connection opened.");
 
+    let authenticated = false;
+
     ws.on("message", async (message) => {
       try {
         const parsedPayload = InboundPayloadSchema.parse(JSON.parse(message));
 
+        if (parsedPayload.command === "passcode") {
+          if (parsedPayload.message === passCode) {
+            authenticated = true;
+            sendMessage(ws, { communication: "Authentication successful." });
+            return;
+          } else {
+            sendMessage(ws, { communication: "Incorrect passcode." });
+            return;
+          }
+        }
+        
+        if (!authenticated) {
+          sendMessage(ws, { communication: "You must authenticate." });
+          return;
+        }
         if (parsedPayload.command === "sign") {
           await handleSignRequest(
             ws,
@@ -220,7 +240,7 @@ async function setupWebSocketServer() {
   });
 
   // Send initial server status to the renderer
-  sendToRenderer("server-status", { running: true, port: 5151 });
+  sendToRenderer("server-status", { running: true, port: 5151, passCode });
 
   // Optionally, handle server closure
   wss.on("close", () => {
