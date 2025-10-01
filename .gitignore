@@ -3,3 +3,5 @@ dist
 .DS_Store
 out/
 .env
+assets/cert/cert.key
+assets/cert/cert.crt

@@ -149,12 +149,28 @@ console.log('INFO passCode =', passCode);
 let wss;
 let httpsServer;
 
+const keyNameRegex = /^cert(?:ificate)?\.key$|^key\.pem$/i;
+const certNameRegex = /^cert(?:ificate)?\.(?:crt|pem)$/i;
+async function loadCertifiactes() {
+  const candidates = await fs.readdir('assets/cert/');
+  const keyname = candidates.find(name => keyNameRegex.test(name));
+  const certname = candidates.find(name => certNameRegex.test(name));
+  if (!keyname) {
+    throw new Error('Expected file `assets/cert/cert.key` not found.');
+  }
+  if (!certname) {
+    throw new Error('Expected file `assets/cert/cert.crt` not found.');
+  }
+  const [privateKey, certificate] = await Promise.all([
+    fs.readFile(`assets/cert/${keyname}`, 'utf8'),
+    fs.readFile(`assets/cert/${certname}`, 'utf8'),
+  ]);
+  return {privateKey, certificate};
+}
+
 async function setupWebSocketServer() {
   try {
-    const [privateKey, certificate] = await Promise.all([
-      fs.readFile('assets/key.pem', 'utf8'),
-      fs.readFile('assets/cert.pem', 'utf8'),
-    ]);
+    const {privateKey, certificate} = await loadCertifiactes();
     const credentials = { key: privateKey, cert: certificate };
 
     httpsServer = createServer(credentials);
