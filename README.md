@@ -37,7 +37,7 @@ npm install
 Now you can access it from the command line using [websocat](https://github.com/vi/websocat).
 
 ```bash
-echo '{"command":"passcode", "message":"'$PASSCODE'"}\n{"command": "sign", "message": "SGVsbG8sIHdvcmxkIQ==", "fingerprint": "YOUR_GPG_KEY_FINGERPRINT"}' | websocat wss://localhost:5151
+echo '{"command":"passcode", "message":"'$PASSCODE'"}' | websocat -k wss://localhost:5151
 ```
 
 # How to compile for "prod" into single-executable.

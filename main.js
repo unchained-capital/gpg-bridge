@@ -149,10 +149,14 @@ console.log('INFO passCode =', passCode);
 let wss;
 let httpsServer;
 
+const assetsDir = path.join(__dirname, 'assets');
+console.log('INFO assetsDir =', assetsDir);
+
 const keyNameRegex = /^cert(?:ificate)?\.key$|^key\.pem$/i;
 const certNameRegex = /^cert(?:ificate)?\.(?:crt|pem)$/i;
-async function loadCertifiactes() {
-  const candidates = await fs.readdir('assets/cert/');
+async function loadCertificates() {
+  const certDir = path.join(assetsDir, 'cert');
+  const candidates = await fs.readdir(certDir);
   const keyname = candidates.find(name => keyNameRegex.test(name));
   const certname = candidates.find(name => certNameRegex.test(name));
   if (!keyname) {
@@ -162,15 +166,15 @@ async function loadCertifiactes() {
     throw new Error('Expected file `assets/cert/cert.crt` not found.');
   }
   const [privateKey, certificate] = await Promise.all([
-    fs.readFile(`assets/cert/${keyname}`, 'utf8'),
-    fs.readFile(`assets/cert/${certname}`, 'utf8'),
+    fs.readFile(path.join(certDir, keyname), 'utf8'),
+    fs.readFile(path.join(certDir, certname), 'utf8'),
   ]);
   return {privateKey, certificate};
 }
 
 async function setupWebSocketServer() {
   try {
-    const {privateKey, certificate} = await loadCertifiactes();
+    const {privateKey, certificate} = await loadCertificates();
     const credentials = { key: privateKey, cert: certificate };
 
     httpsServer = createServer(credentials);
@@ -268,7 +272,7 @@ async function setupWebSocketServer() {
       wss.emit('connection', ws, request);
     });
   });
-
+  const pathModule = path;
   httpsServer.on('request', async function(req, res) {
     const {method, url} = req;
     if (method !== 'GET') {
@@ -280,17 +284,17 @@ async function setupWebSocketServer() {
       '/connect': {
         encoding: 'utf8',
         contentType: 'text/html',
-        path: 'assets/success.html',
+        path: pathModule.join(assetsDir, 'success.html'),
       },
       '/assets/bridge.png': {
         encoding: undefined,
         contentType: 'image/png',
-        path: 'assets/bridge.png',
+        path: pathModule.join(assetsDir, 'bridge.png'),
       },
       '/assets/favicon.png': {
         encoding: undefined,
         contentType: 'image/png',
-        path: 'assets/Unchained_Favicon.png',
+        path: pathModule.join(assetsDir, 'Unchained_Favicon.png'),
       }
     }
     const content = contentMap[url];
