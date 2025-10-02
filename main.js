@@ -428,7 +428,7 @@ async function handleGetGpgPubKeys(ws) {
       sendMessage(ws, { communication: "Keys retrieved.", gpgkeys: keys });
     } else {
       console.error("No GPG keys found.");
-      sendMessage(ws, { communication: "No GPG keys found." });
+      sendMessage(ws, { communication: "No GPG keys found.", gpgkeys: [] });
     }
   } catch (error) {
     console.error("Error retrieving GPG keys:", error);
