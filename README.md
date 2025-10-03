@@ -26,12 +26,18 @@ export NPM_CONFIG_REGISTRY=https://registry.npmjs.org/
 npm install
 ```
 
+- Obtain or generate a certificate (self signed is fine) and place files:
+    - `assets/cert/cert.key`
+    - `assets/cert/cert.crt`
+
 - Run the server `npm run start`
+
+- Observe the passcode displayed on the UI window. Call it `$PASSCODE`.
 
 Now you can access it from the command line using [websocat](https://github.com/vi/websocat).
 
 ```bash
-echo '{"command": "sign", "message": "SGVsbG8sIHdvcmxkIQ==", "fingerprint": "YOUR_GPG_KEY_FINGERPRINT"}' | websocat ws://localhost:5151
+echo '{"command":"passcode", "message":"'$PASSCODE'"}' | websocat -k wss://localhost:5151
 ```
 
 # How to compile for "prod" into single-executable.

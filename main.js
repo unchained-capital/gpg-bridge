@@ -5,6 +5,7 @@ const WebSocket = require("ws");
 const { execFile, spawn } = require("child_process");
 const fs = require("fs").promises;
 const { z } = require("zod");
+const { createServer } = require('https');
 const tmp = require("tmp-promise")
 const isMac = process.platform === 'darwin'
 
@@ -34,7 +35,7 @@ const OutboundPayloadSchema = z.object({
 });
 
 const InboundPayloadSchema = z.object({
-  command: z.enum(["sign", "getkeys", "version", "importkey"]),
+  command: z.enum(["sign", "getkeys", "version", "importkey", "passcode"]),
   message: z.string().optional(),
   fingerprint: z.string().optional(),
 });
@@ -138,31 +139,96 @@ function sendToRenderer(channel, data) {
   }
 }
 
+const acceptableRemoteHosts = ['::1', '127.0.0.1', 'localhost'];
+
+const passCode = Math.random().toString().substring(2, 8).padEnd(6, '0');
+console.log('INFO passCode =', passCode);
+
 // WebSocket Server Setup
+
 let wss;
+let httpsServer;
+
+const assetsDir = path.join(__dirname, 'assets');
+console.log('INFO assetsDir =', assetsDir);
+
+const keyNameRegex = /^cert(?:ificate)?\.key$|^key\.pem$/i;
+const certNameRegex = /^cert(?:ificate)?\.(?:crt|pem)$/i;
+async function loadCertificates() {
+  const certDir = path.join(assetsDir, 'cert');
+  const candidates = await fs.readdir(certDir);
+  const keyname = candidates.find(name => keyNameRegex.test(name));
+  const certname = candidates.find(name => certNameRegex.test(name));
+  if (!keyname) {
+    throw new Error('Expected file `assets/cert/cert.key` not found.');
+  }
+  if (!certname) {
+    throw new Error('Expected file `assets/cert/cert.crt` not found.');
+  }
+  const [privateKey, certificate] = await Promise.all([
+    fs.readFile(path.join(certDir, keyname), 'utf8'),
+    fs.readFile(path.join(certDir, certname), 'utf8'),
+  ]);
+  return {privateKey, certificate};
+}
 
 async function setupWebSocketServer() {
   try {
-    wss = new WebSocket.Server({ port: 5151 });
+    const {privateKey, certificate} = await loadCertificates();
+    const credentials = { key: privateKey, cert: certificate };
+
+    httpsServer = createServer(credentials);
+    wss = new WebSocket.Server({ 
+      // we hook the server up below so we can serve an HTML page too.
+      noServer: true,
+      verifyClient: ({secure, req}) => {
+        if (!secure) {
+          return false;
+        }
+        const remoteHost = req?.socket?.remoteAddress ?? 'NULL';
+        if (!acceptableRemoteHosts.includes(remoteHost)) {
+          return false;
+        }
+        return true;
+      }
+    });
   } catch (e) {
+    console.error(e);
     console.log("Error starting server on port 5151")
-      console.error("Shutting down in 5 seconds");
-      setTimeout(() => { app.quit(); }, 5000);
+    console.error("Shutting down in 5 seconds");
+    setTimeout(() => { app.quit(); }, 5000);
   }
 
   wss.on("error", (msg) => {
-      console.error(msg);
-      console.error("Shutting down in 5 seconds");
-      setTimeout(() => { app.quit(); }, 5000);
+    console.error(msg);
+    console.error("Shutting down in 5 seconds");
+    setTimeout(() => { app.quit(); }, 5000);
   });
 
   wss.on("connection", (ws) => {
     console.log("WebSocket connection opened.");
 
+    let authenticated = false;
+
     ws.on("message", async (message) => {
       try {
         const parsedPayload = InboundPayloadSchema.parse(JSON.parse(message));
 
+        if (parsedPayload.command === "passcode") {
+          if (parsedPayload.message === passCode) {
+            authenticated = true;
+            sendMessage(ws, { communication: "Authentication successful." });
+            return;
+          } else {
+            sendMessage(ws, { communication: "Incorrect passcode." });
+            return;
+          }
+        }
+        
+        if (!authenticated) {
+          sendMessage(ws, { communication: "You must authenticate." });
+          return;
+        }
         if (parsedPayload.command === "sign") {
           await handleSignRequest(
             ws,
@@ -193,14 +259,58 @@ async function setupWebSocketServer() {
     });
   });
 
-  console.log(`WebSocket server running at ws://localhost:5151`);
-
   // Send initial server status to the renderer
-  sendToRenderer("server-status", { running: true, port: 5151 });
+  sendToRenderer("server-status", { running: true, port: 5151, passCode });
 
   // Optionally, handle server closure
   wss.on("close", () => {
     sendToRenderer("server-status", { running: false });
+  });
+
+  httpsServer.on('upgrade', function upgrade(request, socket, head) {
+    wss.handleUpgrade(request, socket, head, function done(ws) {
+      wss.emit('connection', ws, request);
+    });
+  });
+  const pathModule = path;
+  httpsServer.on('request', async function(req, res) {
+    const {method, url} = req;
+    if (method !== 'GET') {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+    }
+
+    const contentMap = {
+      '/connect': {
+        encoding: 'utf8',
+        contentType: 'text/html',
+        path: pathModule.join(assetsDir, 'success.html'),
+      },
+      '/assets/bridge.png': {
+        encoding: undefined,
+        contentType: 'image/png',
+        path: pathModule.join(assetsDir, 'bridge.png'),
+      },
+      '/assets/favicon.png': {
+        encoding: undefined,
+        contentType: 'image/png',
+        path: pathModule.join(assetsDir, 'Unchained_Favicon.png'),
+      }
+    }
+    const content = contentMap[url];
+    if (!content) {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+    }
+
+    const { encoding, contentType, path } = content;
+    const body = await fs.readFile(path, encoding);
+    res.writeHead(200, { 'Content-Type': contentType });
+    res.end(body);
+  });
+
+  httpsServer.listen(5151, () => {
+      console.log('Secure WebSocket server listening on port 5151');
   });
 }
 
@@ -318,7 +428,7 @@ async function handleGetGpgPubKeys(ws) {
       sendMessage(ws, { communication: "Keys retrieved.", gpgkeys: keys });
     } else {
       console.error("No GPG keys found.");
-      sendMessage(ws, { communication: "No GPG keys found." });
+      sendMessage(ws, { communication: "No GPG keys found.", gpgkeys: [] });
     }
   } catch (error) {
     console.error("Error retrieving GPG keys:", error);
