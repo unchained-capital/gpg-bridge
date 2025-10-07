@@ -9,6 +9,8 @@ const { createServer } = require('https');
 const tmp = require("tmp-promise")
 const isMac = process.platform === 'darwin'
 
+const { loadCertificates } = require('./certs.js');
+
 tmp.setGracefulCleanup()
 
 // Temporary directory location
@@ -151,26 +153,6 @@ let httpsServer;
 
 const assetsDir = path.join(__dirname, 'assets');
 console.log('INFO assetsDir =', assetsDir);
-
-const keyNameRegex = /^cert(?:ificate)?\.key$|^key\.pem$/i;
-const certNameRegex = /^cert(?:ificate)?\.(?:crt|pem)$/i;
-async function loadCertificates() {
-  const certDir = path.join(assetsDir, 'cert');
-  const candidates = await fs.readdir(certDir);
-  const keyname = candidates.find(name => keyNameRegex.test(name));
-  const certname = candidates.find(name => certNameRegex.test(name));
-  if (!keyname) {
-    throw new Error('Expected file `assets/cert/cert.key` not found.');
-  }
-  if (!certname) {
-    throw new Error('Expected file `assets/cert/cert.crt` not found.');
-  }
-  const [privateKey, certificate] = await Promise.all([
-    fs.readFile(path.join(certDir, keyname), 'utf8'),
-    fs.readFile(path.join(certDir, certname), 'utf8'),
-  ]);
-  return {privateKey, certificate};
-}
 
 async function setupWebSocketServer() {
   try {
