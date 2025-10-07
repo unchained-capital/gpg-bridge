@@ -50,7 +50,7 @@ This will create a single executable in the `dist` folder for the specific platf
 
 - Because MacOS is often (wisely) configured only to run apps siged by authors registered with Apple, it often won't even ask if you'd like to run a perfectly valid application. If you built an apple app distribution and it says
 
-    "gpg-bridge.app" is damaged and can't be opened. You should movie it to the Trash.
+    "gpg-bridge.app" is damaged and can't be opened. You should move it to the Trash.
     
 when you try to run it, don't worry, the build probably worked, MacOS is just trying to keep you safe. Open a terminal and run:
 
