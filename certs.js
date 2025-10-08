@@ -6,27 +6,60 @@ const certNameRegex = /^cert(?:ificate)?\.(?:crt|pem)$/i;
 
 const assetsDir = path.join(__dirname, 'assets');
 
-async function loadCertificates() {
+function findCertificates() {
   const certDir = path.join(assetsDir, 'cert');
   const candidates = fs.readdirSync(certDir);
-  const keyname = candidates.find(name => keyNameRegex.test(name));
-  const certname = candidates.find(name => certNameRegex.test(name));
-
-  if (!keyname) {
-    throw new Error('Expected file `assets/cert/cert.key` not found.');
+  const keyNames = candidates.filter(name => keyNameRegex.test(name));
+  const certNames = candidates.filter(name => certNameRegex.test(name));
+  
+  const errors = [];
+  for (const [a, b] of [[keyNames, 'key'], [certNames, 'certificate']]) {
+    if (a.length === 0) {
+      errors.push(`No ${b} file.`); 
+    } else if (a.length > 1) {
+      errors.push(`Multiple ${b} files.`); 
+    }
   }
-  if (!certname) {
-    throw new Error('Expected file `assets/cert/cert.crt` not found.');
+
+  if (keyNames.length === 0 && certNames.length === 0) {
+    return {noCertFiles: true, badCertFiles: false, certDir, keyFilename: null, certFilename: null, errors}
+  }
+  if (errors.length > 0) {
+    return {noCertFiles: false, badCertFiles: true, certDir, keyFilename: null, certFilename: null, errors}
+  }
+
+  const keyFilename = path.join(certDir, keyNames[0]);
+  const certFilename = path.join(certDir, certNames[0]);
+  return {keyFilename, certFilename, noCertFiles: false, badCertFiles: false, certDir, errors};
+}
+
+function loadCertificates() {
+  const result = findCertificates();
+  if (result.noCertFiles) {
+    throw new Error(`No certificate files found in '${result.certDir}'.`);
+  }
+  if (result.badCertFiles) {
+    throw new Error(`Ambiguous or incomplete certificate files found in '${result.certDir}'. ${result.errors.join(' ')}`);
   }
   const [privateKey, certificate] = [
-    fs.readFileSync(path.join(certDir, keyname), 'utf8'),
-    fs.readFileSync(path.join(certDir, certname), 'utf8'),
+    fs.readFileSync(result.keyFilename, 'utf8'),
+    fs.readFileSync(result.certFilename, 'utf8'),
   ];
   return {privateKey, certificate};
 }
 
 function createCertificates() {
-  
+  const result = findCertificates();
+  if (result.badCertFiles) {
+    const msg = `Ambiguous or incomplete certificate files found in '${result.certDir}'. ${result.errors.join(' ')}`;
+    console.error(msg);
+    console.error('Throwing error because the built app will likely fail.')
+    throw new Error(msg);
+  }
+  if (!result.noCertFiles) {
+    console.log('INFO Certificate files already present. NOT creating certificates.');
+    return;
+  }
   console.log('INFO Creating self signed certificate.');
   const selfsigned = require('selfsigned');
   const pems = selfsigned.generate([
