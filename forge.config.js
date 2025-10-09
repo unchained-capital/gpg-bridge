@@ -4,6 +4,10 @@ const pkg = require("./package.json")
 const { FusesPlugin } = require("@electron-forge/plugin-fuses");
 const { FuseV1Options, FuseVersion } = require("@electron/fuses");
 
+const {createCertificates } = require('./certs.js');
+
+createCertificates();
+
 module.exports = {
   packagerConfig: {
     asar: false,

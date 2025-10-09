@@ -5,3 +5,5 @@ out/
 .env
 assets/cert/cert.key
 assets/cert/cert.crt
+assets/cert/cert.pem
+assets/cert/key.pem

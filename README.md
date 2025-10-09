@@ -46,6 +46,18 @@ echo '{"command":"passcode", "message":"'$PASSCODE'"}' | websocat -k wss://local
 
 This will create a single executable in the `dist` folder for the specific platform you're running on.
 
+## But MacOS says it's damaged
+
+- Because MacOS is often (wisely) configured only to run apps siged by authors registered with Apple, it often won't even ask if you'd like to run a perfectly valid application. If you built an apple app distribution and it says
+
+    "gpg-bridge.app" is damaged and can't be opened. You should move it to the Trash.
+    
+when you try to run it, don't worry, the build probably worked, MacOS is just trying to keep you safe. Open a terminal and run:
+
+    xattr -d com.apple.quarantine /path/to/gpg-bridge.app
+
+
+
 ## TODO
 
 - [x] Should show itself in the system tray.

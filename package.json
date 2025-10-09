@@ -17,6 +17,7 @@
   "dependencies": {
     "electron-squirrel-startup": "^1.0.0",
     "kill-port": "^2.0.1",
+    "selfsigned": "^3.0.1",
     "tmp-promise": "^3.0.3",
     "ws": "^8.18.0",
     "zod": "^3.23.8"
@@ -36,5 +37,7 @@
     "dotenv": "^16.4.5",
     "electron": "^33.0.1"
   },
-  "files": ["assets"]
+  "files": [
+    "assets"
+  ]
 }
