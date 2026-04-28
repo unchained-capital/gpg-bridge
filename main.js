@@ -143,8 +143,10 @@ function sendToRenderer(channel, data) {
 
 const acceptableRemoteHosts = ['::1', '127.0.0.1', 'localhost'];
 
-const passCode = Math.random().toString().substring(2, 8).padEnd(6, '0');
-console.log('INFO passCode =', passCode);
+// crypto.getRandomValues fills a typed array in place, so we allocate a
+// single-element Uint32Array, read the random uint32 back out, then reduce
+// it into the 6-digit range (0–999_999) and zero-pad to a fixed width.
+const passCode = (crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).toString().padStart(6, '0');
 
 // WebSocket Server Setup
 
