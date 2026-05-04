@@ -6,6 +6,7 @@ const { execFile, spawn } = require("child_process");
 const fs = require("fs").promises;
 const { z } = require("zod");
 const { createServer } = require('https');
+const crypto = require('crypto');
 const tmp = require("tmp-promise")
 const isMac = process.platform === 'darwin'
 
@@ -148,6 +149,21 @@ const acceptableRemoteHosts = ['::1', '127.0.0.1', 'localhost'];
 // it into the 6-digit range (0–999_999) and zero-pad to a fixed width.
 const passCode = (crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).toString().padStart(6, '0');
 
+// Constant-time string comparison to avoid leaking secret length/content via
+// timing side-channels. timingSafeEqual requires equal-length buffers, so we
+// guard on length first; the passcode length is fixed and not itself secret.
+function safeStringCompare(userInput, secretString) {
+  if (typeof userInput !== 'string' || typeof secretString !== 'string') {
+    return false;
+  }
+  const inputBuffer = Buffer.from(userInput);
+  const secretBuffer = Buffer.from(secretString);
+  if (inputBuffer.length !== secretBuffer.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(inputBuffer, secretBuffer);
+}
+
 // WebSocket Server Setup
 
 let wss;
@@ -199,7 +215,7 @@ async function setupWebSocketServer() {
         const parsedPayload = InboundPayloadSchema.parse(JSON.parse(message));
 
         if (parsedPayload.command === "passcode") {
-          if (parsedPayload.message === passCode) {
+          if (safeStringCompare(parsedPayload.message, passCode)) {
             authenticated = true;
             sendMessage(ws, { communication: "Authentication successful." });
             return;
